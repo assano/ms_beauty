@@ -1,4 +1,4 @@
-#coding: utf-8
+# -*- coding: utf-8 -*-
 
 import httplib, urllib, base64
 import json
@@ -15,16 +15,18 @@ def get_info(params):
         conn.close()
     except Exception as e:
         print("[Errno {0}] {1}".format(e.errno, e.strerror))
-
     return data
 
 
 class Id2Id(object):
 
     r_id_arr = []
+    one_hop_path = []
+    two_hop_path = []
 
     def __init__(self):
         pass
+
 
     def one_hop(self, id1, id2):
         #请求id1的RId
@@ -43,19 +45,159 @@ class Id2Id(object):
         json_object = json.loads(json_info)
         entitie = json_object["entities"][0]
         r_id_arr = entitie["RId"]
-
+        
         if id2 in r_id_arr:
-            path = [id1, id2]
-            res.append(path) 
-        return res
+            path = [str(id1), str(id2)]
+            self.one_hop_path.append(path) 
+        return self.one_hop_path
+
 
     def two_hop(self, id1, id2):
-        #
-        pass
+        #1)请求id3的RId,id1----->id3---->id2s
+        if len(self.one_hop_path) > 0:
+            id3 = self.one_hop_path[0][1]
+            params = urllib.urlencode({
+                'expr': "Id="+str(id3),
+                'model': 'latest',
+                'count': '10',
+                'offset': '0',
+                'attributes': 'RId',
+            })
+            json_info = get_info(params)
+            json_object = json.loads(json_info)
+            entitie = json_object["entities"][0]
+            r_id_arr = entitie["RId"]
+            if id2 in r_id_arr:
+                path = [str(id1), str(id3), str(id2)]
+                two_hop_path.append(path)
+        #2)请求Id1的除RId的信息
+        id1_params = urllib.urlencode({
+            'expr': "Id="+str(id1),
+            'model': 'latest',
+            'count': '10',
+            'offset': '0',
+            'attributes': 'AA.AuId,F.FId,J.JId,C.CId',
+        })
+        json_info_id1 = get_info(id1_params)
+        json_object_id1 = json.loads(json_info_id1)
+        entitie_id1 = json_object_id1['entities'][0]
 
 
+        AA_AuId_dict_id1 = {}
+        F_FId_dict_id1 = {}
+        C_CId_dict_id1 = {}
+        J_JId_dict_id1 = {}
 
+        keys_id1 = entitie_id1.keys()
+        if 'AA' in keys_id1:
+            AA_AuId_dict_id1 = entitie_id1['AA']
+        if 'F' in keys_id1:
+            F_FId_dict_id1 = entitie_id1['F']
+        if 'C' in keys_id1:
+            C_CId_dict_id1 = entitie_id1['C']
+        if 'J' in keys_id1:
+            J_JId_dict_id1 = entitie_id1['J']
+
+        #3)请求Id2的除RId的信息
+        id2_params = urllib.urlencode({
+            'expr': "Id="+str(id2),
+            'model': 'latest',
+            'count': '10',
+            'offset': '0',
+            'attributes': 'AA.AuId,F.FId,J.JId,C.CId',
+        })
+        json_info_id2 = get_info(id2_params)
+        json_object_id2 = json.loads(json_info_id2)
+        entitie_id2 = json_object_id2['entities'][0]
+
+        AA_AuId_dict_id2 = {}
+        F_FId_dict_id2 = {}
+        C_CId_dict_id2 = {}
+        J_JId_dict_id2 = {}
+
+        keys_id2 = entitie_id2.keys()
+        if 'AA' in keys_id2:
+            AA_AuId_dict_id2 = entitie_id2['AA']
+        if 'F' in keys_id2:
+            F_FId_dict_id2 = entitie_id2['F']
+        if 'C' in keys_id2:
+            C_CId_dict_id2 = entitie_id2['C']
+        if 'J' in keys_id2:
+            J_JId_dict_id2 = entitie_id2['J']
+
+        #4)比对Id1和Id2的 4 种信息
+            #==========比对 AA.AuId
+        AA_AuId_arr_id1 = []
+        for tmp_dict in AA_AuId_dict_id1:
+            AA_AuId_arr_id1.append(tmp_dict['AuId'])
+        AA_AuId_arr_id2 = []
+        for tmp_dict in AA_AuId_dict_id2:
+            AA_AuId_arr_id2.append(tmp_dict['AuId'])
+        AA_AuId_set_id1 = set(AA_AuId_arr_id1)
+        AA_AuId_set_id2 = set(AA_AuId_arr_id2)
+            #==========求两个集合的交集
+        inters = AA_AuId_set_id1 & AA_AuId_set_id2
+            #==========把交集里的结果节点添加到two_hop的路径中，Id1----->集合中的元素----->Id3
+        for ele in inters:
+            self.two_hop_path.append([str(id1), str(ele), str(id2)])
+
+            #==========比对 F.FId
+        F_FId_arr_id1 = []
+        for tmp_dict in F_FId_dict_id1:
+            F_FId_arr_id1.append(tmp_dict['FId'])
+        F_FId_arr_id2 = []
+        for tmp_dict in F_FId_dict_id2:
+            F_FId_arr_id2.append(tmp_dict['FId'])
+        F_FId_set_id1 = set(F_FId_arr_id1)
+        F_FId_set_id2 = set(F_FId_arr_id2)
+            #==========求两个集合的交集
+        inters1 = F_FId_set_id1 & F_FId_set_id2
+            #==========把交集里的结果节点添加到two_hop的路径中，Id1----->集合中的元素----->Id3
+        for ele in inters1:
+            self.two_hop_path.append([str(id1), str(ele), str(id2)])
+
+            #==========比对 J.JId
+        J_JId_arr_id1 = []
+        for tmp_dict in J_JId_dict_id1:
+            J_JId_arr_id1.append(tmp_dict['JId'])
+        J_JId_arr_id2 = []
+        for tmp_dict in J_JId_dict_id2:
+            J_JId_arr_id2.append(tmp_dict['JId'])
+        J_JId_set_id1 = set(J_JId_arr_id1)
+        J_JId_set_id2 = set(J_JId_arr_id2)
+            #==========求两个集合的交集
+        inters2 = J_JId_set_id1 & J_JId_set_id2
+            #==========把交集里的结果节点添加到two_hop的路径中，Id1----->集合中的元素----->Id3
+        for ele in inters2:
+            self.two_hop_path.append([str(id1), str(ele), str(id2)])
+
+            #==========比对 C.CId
+        C_CId_arr_id1 = []
+        for tmp_dict in C_CId_dict_id1:
+            print 'DId:',tmp_dict['DId']
+            C_CId_arr_id1.append(tmp_dict['CId'])
+        C_CId_arr_id2 = []
+        for tmp_dict in C_CId_dict_id2:
+            C_CId_arr_id2.append(tmp_dict['CId'])
+        C_CId_set_id1 = set(C_CId_arr_id1)
+        C_CId_set_id2 = set(C_CId_arr_id2)
+            #==========求两个集合的交集
+        inters3 = C_CId_set_id1 & C_CId_set_id2
+            #==========把交集里的结果节点添加到two_hop的路径中，Id1----->集合中的元素----->Id3
+        for ele in inters3:
+            self.two_hop_path.append([str(id1), str(ele), str(id2)])
+
+        return self.two_hop_path
+
+
+#--------------------test------------------
 id1 = 2157025439
 id2 = 2102958620
+
+# id1 = 2061901927
+# id2 = 2134746982
+
 path = Id2Id().one_hop(id1, id2)
-print 'path:',path
+print 'one_hop_path:',path
+path2 = Id2Id().two_hop(id1, id2)
+print 'two_hop_path:',path2
