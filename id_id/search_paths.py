@@ -44,16 +44,17 @@ class Id2Id(object):
         json_info = get_info(params)
         json_object = json.loads(json_info)
         entitie = json_object["entities"][0]
-        r_id_arr = entitie["RId"]
+        if 'RId' in entitie.keys():
+            r_id_arr = entitie["RId"]
+            if id2 in r_id_arr:
+                path = [str(id1), str(id2)]
+                self.one_hop_path.append(path) 
         
-        if id2 in r_id_arr:
-            path = [str(id1), str(id2)]
-            self.one_hop_path.append(path) 
         return self.one_hop_path
 
 
     def two_hop(self, id1, id2):
-        #1)请求id3的RId,id1----->id3---->id2s
+        #1)请求id3的RId, id1----->id3---->id2
         if len(self.one_hop_path) > 0:
             id3 = self.one_hop_path[0][1]
             params = urllib.urlencode({
@@ -70,7 +71,7 @@ class Id2Id(object):
             if id2 in r_id_arr:
                 path = [str(id1), str(id3), str(id2)]
                 two_hop_path.append(path)
-        #2)请求Id1的除RId的信息
+        #2)请求Id1的除RId的其余 4 种信息
         id1_params = urllib.urlencode({
             'expr': "Id="+str(id1),
             'model': 'latest',
@@ -83,10 +84,10 @@ class Id2Id(object):
         entitie_id1 = json_object_id1['entities'][0]
 
 
-        AA_AuId_dict_id1 = {}
-        F_FId_dict_id1 = {}
-        C_CId_dict_id1 = {}
-        J_JId_dict_id1 = {}
+        AA_AuId_dict_id1 = []
+        F_FId_dict_id1 = []
+        C_CId_dict_id1 = []
+        J_JId_dict_id1 = []
 
         keys_id1 = entitie_id1.keys()
         if 'AA' in keys_id1:
@@ -94,11 +95,11 @@ class Id2Id(object):
         if 'F' in keys_id1:
             F_FId_dict_id1 = entitie_id1['F']
         if 'C' in keys_id1:
-            C_CId_dict_id1 = entitie_id1['C']
+            C_CId_dict_id1.append(entitie_id1['C'])
         if 'J' in keys_id1:
-            J_JId_dict_id1 = entitie_id1['J']
+            J_JId_dict_id1.append(entitie_id1['J'])
 
-        #3)请求Id2的除RId的信息
+        #3)请求Id2的除RId的其余 4 种信息
         id2_params = urllib.urlencode({
             'expr': "Id="+str(id2),
             'model': 'latest',
@@ -110,10 +111,10 @@ class Id2Id(object):
         json_object_id2 = json.loads(json_info_id2)
         entitie_id2 = json_object_id2['entities'][0]
 
-        AA_AuId_dict_id2 = {}
-        F_FId_dict_id2 = {}
-        C_CId_dict_id2 = {}
-        J_JId_dict_id2 = {}
+        AA_AuId_dict_id2 = []
+        F_FId_dict_id2 = []
+        C_CId_dict_id2 = []
+        J_JId_dict_id2 = []
 
         keys_id2 = entitie_id2.keys()
         if 'AA' in keys_id2:
@@ -121,9 +122,9 @@ class Id2Id(object):
         if 'F' in keys_id2:
             F_FId_dict_id2 = entitie_id2['F']
         if 'C' in keys_id2:
-            C_CId_dict_id2 = entitie_id2['C']
+            C_CId_dict_id2.append(entitie_id2['C'])
         if 'J' in keys_id2:
-            J_JId_dict_id2 = entitie_id2['J']
+            J_JId_dict_id2.append(entitie_id2['J'])
 
         #4)比对Id1和Id2的 4 种信息
             #==========比对 AA.AuId
@@ -156,7 +157,7 @@ class Id2Id(object):
         for ele in inters1:
             self.two_hop_path.append([str(id1), str(ele), str(id2)])
 
-            #==========比对 J.JId
+            #==========比对 J.JId==========J.JId是只有一个元素的数组
         J_JId_arr_id1 = []
         for tmp_dict in J_JId_dict_id1:
             J_JId_arr_id1.append(tmp_dict['JId'])
@@ -171,13 +172,12 @@ class Id2Id(object):
         for ele in inters2:
             self.two_hop_path.append([str(id1), str(ele), str(id2)])
 
-            #==========比对 C.CId
+            #==========比对 C.CId==========C.CId是只有一个元素的数组
         C_CId_arr_id1 = []
         for tmp_dict in C_CId_dict_id1:
-            print 'DId:',tmp_dict['DId']
             C_CId_arr_id1.append(tmp_dict['CId'])
         C_CId_arr_id2 = []
-        for tmp_dict in C_CId_dict_id2:
+        for tmp_dict in C_CId_dict_id1:
             C_CId_arr_id2.append(tmp_dict['CId'])
         C_CId_set_id1 = set(C_CId_arr_id1)
         C_CId_set_id2 = set(C_CId_arr_id2)
