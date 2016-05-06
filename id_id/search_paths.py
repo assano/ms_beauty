@@ -45,8 +45,8 @@ class Id2Id(object):
         json_object = json.loads(json_info)
         entitie = json_object["entities"][0]
         if 'RId' in entitie.keys():
-            r_id_arr = entitie["RId"]
-            if id2 in r_id_arr:
+            Id2Id.r_id_arr = entitie["RId"]
+            if id2 in Id2Id.r_id_arr:
                 path = [str(id1), str(id2)]
                 self.one_hop_path.append(path) 
         
@@ -55,22 +55,44 @@ class Id2Id(object):
 
     def two_hop(self, id1, id2):
         #1)请求id3的RId, id1----->id3---->id2
-        if len(self.one_hop_path) > 0:
-            id3 = self.one_hop_path[0][1]
-            params = urllib.urlencode({
-                'expr': "Id="+str(id3),
+            #============请求id1的RId
+        # params1 = urllib.urlencode({
+        #     'expr': "Id="+str(id1),
+        #     'model': 'latest',
+        #     'count': '10',
+        #     'offset': '0',
+        #     'attributes': 'RId',
+        # })
+        # json_info1 = get_info(params1)
+        # json_object1 = json.loads(json_info1)
+        # entitie1 = json_object1["entities"][0]
+
+
+        # keys1 = entitie1.keys()
+        # if 'RId' in keys1:
+            # r_id_arr1 = entitie1['RId']
+
+        #===========请求r_id_arr1中每一个Id的RId，并且比对有没有id2
+            # for tmp_id in r_id_arr1:
+        for tmp_id in Id2Id.r_id_arr:
+            tmp_params = urllib.urlencode({
+                'expr': "Id="+str(tmp_id),
                 'model': 'latest',
                 'count': '10',
                 'offset': '0',
                 'attributes': 'RId',
             })
-            json_info = get_info(params)
-            json_object = json.loads(json_info)
-            entitie = json_object["entities"][0]
-            r_id_arr = entitie["RId"]
-            if id2 in r_id_arr:
-                path = [str(id1), str(id3), str(id2)]
-                two_hop_path.append(path)
+            tmp_json_info = get_info(tmp_params)
+            tmp_json_object = json.loads(tmp_json_info)
+            tmp_entitie = tmp_json_object["entities"][0]
+
+            tmp_keys = tmp_entitie.keys()
+            if 'RId' in tmp_keys:
+                tmp_r_id_arr = tmp_entitie['RId']
+                #比对
+                if id2 in tmp_r_id_arr:
+                    self.two_hop_path.append([str(id1), str(tmp_id), str(id2)])
+
         #2)请求Id1的除RId的其余 4 种信息
         id1_params = urllib.urlencode({
             'expr': "Id="+str(id1),
