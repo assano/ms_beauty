@@ -84,14 +84,15 @@ class Id2Id(object):
             })
             tmp_json_info = get_info(tmp_params)
             tmp_json_object = json.loads(tmp_json_info)
-            tmp_entitie = tmp_json_object["entities"][0]
+            if 'entities' in tmp_json_object:
+                tmp_entitie = tmp_json_object['entities'][0]
 
-            tmp_keys = tmp_entitie.keys()
-            if 'RId' in tmp_keys:
-                tmp_r_id_arr = tmp_entitie['RId']
-                #比对
-                if id2 in tmp_r_id_arr:
-                    self.two_hop_path.append([str(id1), str(tmp_id), str(id2)])
+                tmp_keys = tmp_entitie.keys()
+                if 'RId' in tmp_keys:
+                    tmp_r_id_arr = tmp_entitie['RId']
+                    #比对
+                    if id2 in tmp_r_id_arr:
+                        self.two_hop_path.append([str(id1), str(tmp_id), str(id2)])
 
         #2)请求Id1的除RId的其余 4 种信息
         id1_params = urllib.urlencode({
@@ -213,11 +214,11 @@ class Id2Id(object):
 
 
 #--------------------test------------------
-id1 = 2157025439
-id2 = 2102958620
+# id1 = 2157025439
+# id2 = 2102958620
 
-# id1 = 2061901927
-# id2 = 2134746982
+id1 = 2157025439
+id2 = 2134746982
 
 path = Id2Id().one_hop(id1, id2)
 print 'one_hop_path:',path
